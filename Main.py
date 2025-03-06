@@ -46,8 +46,8 @@ class ChatBot:
     def __init__(self, token, api_key):
         self.token = token
         self.api_key = api_key
-        self.last_message_id = None  # Simpan ID pesan terakhir
-        self.chat_history = []  # Simpan history pesan (max 5)
+        self.last_message_id = None  
+        self.chat_history = []  
 
     def send_request(self, method, endpoint, json_data=None):
         """Helper buat kirim request ke Discord API"""
@@ -69,9 +69,9 @@ class ChatBot:
         response = self.send_request("POST", f"channels/{TARGET_CHANNEL_ID}/messages", json_data=data)
         if response:
             self.last_message_id = response.get("id")
-            self.chat_history.append({"role": "assistant", "content": content})  # Simpan pesan bot
+            self.chat_history.append({"role": "assistant", "content": content})  
             if len(self.chat_history) > 5:
-                self.chat_history.pop(0)  # Hapus pesan lama biar history tetap max 5
+                self.chat_history.pop(0)  
             return self.last_message_id
         return None
 
@@ -83,14 +83,12 @@ class ChatBot:
             "Content-Type": "application/json"
         }
 
-        # Update prompt supaya AI nggak terlalu banyak tanya & lebih santai
         system_prompt = """Oke, sekarang jadi lah AI yang friendly menggunakan bahasa Inggris informal/sehari-hari.
         Jangan ngaku kalau kamu AI ketika ditanya. Tambahkan emote seperlunya!
         Jangan banyak tanya, seperlunya aja! Jadi lah seperti manusia, ngobrol biasa."""
 
         messages = [{"role": "system", "content": system_prompt}]
         
-        # Ambil history percakapan (max 5 chat terakhir)
         for chat in self.chat_history[-5:]:
             messages.append({"role": chat["role"], "content": chat["content"]})
 
@@ -99,7 +97,7 @@ class ChatBot:
         data = {
             "model": "gpt-4o",
             "messages": messages,
-            "temperature": 2.0  # Bikin lebih variatif
+            "temperature": 1.2  
         }
 
         try:
@@ -107,7 +105,6 @@ class ChatBot:
             if response.status_code == 200:
                 ai_reply = response.json()["choices"][0]["message"]["content"]
                 
-                # Filter response biar ga looping pertanyaan
                 if ai_reply.lower().startswith(("what's up", "how are you", "what's new")):
                     ai_reply = "Ah, you know, just the usual! Hanging out and vibing. 😎"
 
@@ -127,28 +124,29 @@ bot2 = ChatBot(TOKEN_2, api_keys[TOKEN_2])
 async def start_chat():
     """Loop percakapan antar bot"""
     
-    # STEP 1: Token 1 kirim pesan pertama (tanpa AI)
     first_message = random.choice(["Hey, what's up? ", "Yo! How's your day? ", "Hello there! What's new? "])
     bot1.last_message_id = bot1.send_message(first_message)
-    bot1.chat_history.append({"role": "user", "content": first_message})  # Simpan pesan pertama
+    bot1.chat_history.append({"role": "user", "content": first_message})  
     print(f"💬 Bot 1: {first_message}")
 
     await asyncio.sleep(random.uniform(MIN_INTERVAL, MAX_INTERVAL))
 
+    last_response = first_message
+
     while True:
-        # STEP 2: Token 2 baca pesan terakhir dari Token 1 dan balas pakai AI
         if bot1.last_message_id:
-            bot2_reply = bot2.get_ai_response(first_message)
+            bot2_reply = bot2.get_ai_response(last_response)  
             bot2.last_message_id = bot2.send_message(bot2_reply, reply_to=bot1.last_message_id)
             print(f"💬 Bot 2: {bot2_reply}")
+            last_response = bot2_reply  
 
         await asyncio.sleep(random.uniform(MIN_INTERVAL, MAX_INTERVAL))
 
-        # STEP 3: Token 1 baca balasan dari Token 2 dan balas lagi pakai AI
         if bot2.last_message_id:
-            bot1_reply = bot1.get_ai_response(bot2_reply)
+            bot1_reply = bot1.get_ai_response(last_response)  
             bot1.last_message_id = bot1.send_message(bot1_reply, reply_to=bot2.last_message_id)
             print(f"💬 Bot 1: {bot1_reply}")
+            last_response = bot1_reply  
 
         await asyncio.sleep(random.uniform(MIN_INTERVAL, MAX_INTERVAL))
 
