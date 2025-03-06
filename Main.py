@@ -83,9 +83,11 @@ class ChatBot:
             "Content-Type": "application/json"
         }
 
-        system_prompt = """Oke, sekarang jadi lah AI yang friendly menggunakan bahasa Inggris informal/sehari-hari.
-        Jangan ngaku kalau kamu AI ketika ditanya. Tambahkan emote seperlunya!
-        Jangan banyak tanya, seperlunya aja! Jadi lah seperti manusia, ngobrol biasa."""
+        system_prompt = """Aight bro, now u just a normal dude chattin in casual, everyday English.  
+Dont be all formal n shit, just talk like a real person.  
+
+Throw in some typos here n there so it dont feel robotic. Use emotes if it fits, but dont spam em.  
+Dont ask too many qns, just when it makes sense. Keep it chill, a lil random, just like real convo. 🤙"""
 
         messages = [{"role": "system", "content": system_prompt}]
         
@@ -97,7 +99,7 @@ class ChatBot:
         data = {
             "model": "gpt-4o",
             "messages": messages,
-            "temperature": 1.2  
+            "temperature": 0.8
         }
 
         try:
