@@ -34,18 +34,19 @@ except FileNotFoundError:
     print("❌ File token.txt tidak ditemukan!")
     exit(1)
 
-if not user_tokens:
-    print("❌ Tidak ada token yang dimuat! Pastikan file token.txt benar.")
+if len(user_tokens) < 2:
+    print("❌ Minimal butuh 2 token buat percakapan.")
     exit(1)
+
+TOKEN_1 = user_tokens[0]
+TOKEN_2 = user_tokens[1]
 
 # Class ChatBot pakai requests
 class ChatBot:
-    def __init__(self, token, all_bots):
+    def __init__(self, token, api_key):
         self.token = token
-        self.api_key = api_keys[token]
-        self.all_bots = all_bots
-        self.last_message_ids = {}  # Simpan ID pesan terakhir per channel
-        self.chat_history = []  # Simpan history chat
+        self.api_key = api_key
+        self.last_message_id = None  # Simpan ID pesan terakhir
 
     def send_request(self, method, endpoint, json_data=None):
         """Helper buat kirim request ke Discord API"""
@@ -66,7 +67,8 @@ class ChatBot:
 
         response = self.send_request("POST", f"channels/{TARGET_CHANNEL_ID}/messages", json_data=data)
         if response:
-            return response.get("id")
+            self.last_message_id = response.get("id")
+            return self.last_message_id
         return None
 
     def get_ai_response(self, user_message):
@@ -77,10 +79,7 @@ class ChatBot:
             "Content-Type": "application/json"
         }
         
-        messages = [{"role": "system", "content": "Oke sekarang jadi lah ai yang friendly menggunakan bahasa Inggris informal/sehari hari dan jangan ngaku kalau kamu ai ketika di tanya. Tambahkan emote seperlunya! Jangan banyak tanya, seperlunya aja! Jadi lah seperti manusia."}]
-        for chat in self.chat_history[-5:]:
-            messages.append({"role": chat["role"], "content": chat["content"]})
-
+        messages = [{"role": "system", "content": "Oke sekarang jadi lah ai yang friendly menggunakan bahasa Inggris informal/sehari hari dan jangan ngaku kalau kamu ai ketika di tanya. Jangan selalu tanya, seperlunya aja! Jadi lah seperti manusia."}]
         messages.append({"role": "user", "content": user_message})
 
         data = {
@@ -92,9 +91,7 @@ class ChatBot:
         try:
             response = requests.post(url, headers=headers, json=data)
             if response.status_code == 200:
-                ai_reply = response.json()["choices"][0]["message"]["content"]
-                self.chat_history.append({"role": "assistant", "content": ai_reply})
-                return ai_reply
+                return response.json()["choices"][0]["message"]["content"]
             else:
                 print(f"❌ Error OpenAI API: {response.status_code} - {response.text}")
                 return f"Oops, error with AI response! ({response.status_code})"
@@ -102,47 +99,40 @@ class ChatBot:
             print(f"❌ Error OpenAI: {e}")
             return "Oops, error with AI response!"
 
-    async def start_conversation(self):
-        """Loop percakapan antar bot"""
-        last_messages = {}
+# Inisialisasi bot
+bot1 = ChatBot(TOKEN_1, api_keys[TOKEN_1])
+bot2 = ChatBot(TOKEN_2, api_keys[TOKEN_2])
 
-        while True:
-            if len(self.all_bots) < 2:
-                print("❌ Tidak cukup bot untuk percakapan! Minimal 2 bot diperlukan.")
-                return
-
-            sender_bot, receiver_bot = random.sample(self.all_bots, 2)
-
-            user_message = last_messages.get(sender_bot, "Hey, what's up?")
-            ai_response = self.get_ai_response(user_message)
-            last_messages[receiver_bot] = ai_response
-
-            # Kirim pesan
-            last_msg_id = self.last_message_ids.get(receiver_bot)
-            sent_message_id = self.send_message(ai_response, reply_to=last_msg_id)
-            if sent_message_id:
-                self.last_message_ids[sender_bot] = sent_message_id
-                print(f"💬 {self.token[:10]}... -> {ai_response}")  # Logging pesan
-
-            wait_time = random.uniform(MIN_INTERVAL, MAX_INTERVAL)
-            print(f"⏳ Menunggu {wait_time:.2f} detik sebelum pesan berikutnya...")
-            await asyncio.sleep(wait_time)
-
-# Jalankan semua bot
-async def start_bots():
-    if len(user_tokens) < 2:
-        print("❌ Tidak cukup bot! Minimal 2 bot diperlukan untuk percakapan.")
-        return
-
-    bots = [ChatBot(token, user_tokens) for token in user_tokens]
+async def start_chat():
+    """Loop percakapan antar bot"""
     
-    # Pakai `asyncio.create_task()` biar nggak nunggu satu per satu
-    tasks = [asyncio.create_task(bot.start_conversation()) for bot in bots]
-    await asyncio.gather(*tasks)
+    # STEP 1: Token 1 kirim pesan pertama (tanpa AI)
+    first_message = random.choice(["Hey, what's up? ", "Yo! How's your day? ", "Hello there! What's new? "])
+    bot1.last_message_id = bot1.send_message(first_message)
+    print(f"💬 Bot 1: {first_message}")
+
+    await asyncio.sleep(random.uniform(MIN_INTERVAL, MAX_INTERVAL))
+
+    while True:
+        # STEP 2: Token 2 baca pesan terakhir dari Token 1 dan balas pakai AI
+        if bot1.last_message_id:
+            bot2_reply = bot2.get_ai_response(first_message)
+            bot2.last_message_id = bot2.send_message(bot2_reply, reply_to=bot1.last_message_id)
+            print(f"💬 Bot 2: {bot2_reply}")
+
+        await asyncio.sleep(random.uniform(MIN_INTERVAL, MAX_INTERVAL))
+
+        # STEP 3: Token 1 baca balasan dari Token 2 dan balas lagi pakai AI
+        if bot2.last_message_id:
+            bot1_reply = bot1.get_ai_response(bot2_reply)
+            bot1.last_message_id = bot1.send_message(bot1_reply, reply_to=bot2.last_message_id)
+            print(f"💬 Bot 1: {bot1_reply}")
+
+        await asyncio.sleep(random.uniform(MIN_INTERVAL, MAX_INTERVAL))
 
 if __name__ == "__main__":
     try:
-        asyncio.run(start_bots())
+        asyncio.run(start_chat())
     except RuntimeError:  
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(start_bots())
+        loop.run_until_complete(start_chat())
