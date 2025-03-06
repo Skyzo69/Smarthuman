@@ -4,20 +4,26 @@ import asyncio
 import random
 import os
 
-# Minta input dari user untuk channel ID dan interval waktu
+# Minta input dari user untuk channel ID dan interval waktu antar pesan
 try:
     TARGET_CHANNEL_ID = int(input("Masukkan ID channel: ").strip())
-    MIN_INTERVAL = float(input("Set Waktu Hapus Pesan (min 0.01 detik): ").strip())
+    MIN_INTERVAL = float(input("Set Interval Waktu Minimal Antar Pesan (detik, min 1.0): ").strip())
+    MAX_INTERVAL = float(input("Set Interval Waktu Maksimal Antar Pesan (detik): ").strip())
+
+    if MIN_INTERVAL < 1.0 or MAX_INTERVAL < MIN_INTERVAL:
+        print("❌ Input tidak valid! Pastikan MIN_INTERVAL ≥ 1.0 dan MAX_INTERVAL ≥ MIN_INTERVAL.")
+        exit(1)
+
 except ValueError:
     print("❌ Input tidak valid! Pastikan memasukkan angka.")
     exit(1)
 
-# Load token bot + API Key dari file tokens.txt
+# Load token bot + API Key dari file token.txt
 user_tokens = []
 api_keys = {}
 
 try:
-    with open("tokens.txt", "r") as f:
+    with open("token.txt", "r") as f:
         for line in f.readlines():
             parts = line.strip().split("|")
             if len(parts) == 2:
@@ -27,7 +33,7 @@ try:
             else:
                 print(f"❌ Format salah di line: {line}")
 except FileNotFoundError:
-    print("❌ File tokens.txt tidak ditemukan!")
+    print("❌ File token.txt tidak ditemukan!")
     exit(1)
 
 # Kelas bot Discord
@@ -129,8 +135,9 @@ class ChatBot(discord.Client):
                 except Exception as e:
                     print(f"❌ Error saat mengirim pesan: {e}")
                     return
-            
-            wait_time = random.uniform(MIN_INTERVAL, MIN_INTERVAL * 2)  
+        
+            wait_time = random.uniform(MIN_INTERVAL, MAX_INTERVAL)  # Tunggu sesuai rentang waktu
+            print(f"⏳ Menunggu {wait_time:.2f} detik sebelum pesan berikutnya...")
             await asyncio.sleep(wait_time)
 
 # Fungsi untuk menjalankan beberapa bot sekaligus
