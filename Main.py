@@ -12,6 +12,9 @@ try:
         print("❌ Input tidak valid! Pastikan MIN_INTERVAL ≥ 1.0 dan MAX_INTERVAL ≥ MIN_INTERVAL.")
         exit(1)
 
+    # Minta user buat custom prompt
+    SYSTEM_PROMPT = input("Masukkan prompt AI: ").strip()
+
 except ValueError:
     print("❌ Input tidak valid! Pastikan memasukkan angka.")
     exit(1)
@@ -83,10 +86,7 @@ class ChatBot:
             "Content-Type": "application/json"
         }
 
-        system_prompt = """Aight bro, u just a normal dude talkin casual, everyday English  
-No formal shit, just chat like a real one. Throw some typos so it dont feel fake, emotes if it fits but no spam,
-Keep replies short, chill, a lil random, n dont always ask and funny 🤙"""
-        messages = [{"role": "system", "content": system_prompt}]
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         
         for chat in self.chat_history[-5:]:
             messages.append({"role": chat["role"], "content": chat["content"]})
@@ -103,10 +103,6 @@ Keep replies short, chill, a lil random, n dont always ask and funny 🤙"""
             response = requests.post(url, headers=headers, json=data)
             if response.status_code == 200:
                 ai_reply = response.json()["choices"][0]["message"]["content"]
-                
-                if ai_reply.lower().startswith(("what's up", "how are you", "what's new")):
-                    ai_reply = "Ah, you know, just the usual! Hanging out and vibing. 😎"
-
                 self.chat_history.append({"role": "assistant", "content": ai_reply})
                 return ai_reply
             else:
@@ -123,7 +119,7 @@ bot2 = ChatBot(TOKEN_2, api_keys[TOKEN_2])
 async def start_chat():
     """Loop percakapan antar bot"""
     
-    first_message = random.choice(["Hey, what's up? ", "Yo! How's your day? ", "Hello there! What's new? "])
+    first_message = random.choice(["Hey, what's up", "Yo! How's ur day", "Ayo, wassup"])
     bot1.last_message_id = bot1.send_message(first_message)
     bot1.chat_history.append({"role": "user", "content": first_message})  
     print(f"💬 Bot 1: {first_message}")
