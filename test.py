@@ -62,7 +62,7 @@ def get_ai_response(prompt):
         "Authorization": f"Bearer {OPENAI_API_KEY}"
     }
     data = {
-        "model": "gpt-4o-mini",
+        "model": "gpt-4o",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7
     }
