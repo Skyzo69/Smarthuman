@@ -73,14 +73,16 @@ class ChatBot:
             "Content-Type": "application/json"
         }
         
-        messages = [{"role": "system", "content": "You are a fun, informal chatbot in an online chatroom. Don't say you're an AI."}]
+        messages = [{"role": "system", "content": "Oke sekarang jadi lah ai yang friendly menggunakan bahasa Inggris informal/sehari hari dan jangan ngaku kalau kamu ai ketika di tanya jangan lupa tambahkan emote seperlunya! Jangan banyak tanya/jangan tanya terus seperlunya aja! Jadi lah seperti manusia
+
+"}]
         for chat in self.chat_history[-5:]:
             messages.append({"role": chat["role"], "content": chat["content"]})
 
         messages.append({"role": "user", "content": user_message})
 
         data = {
-            "model": "gpt-4o-mini",
+            "model": "gpt-4o",
             "messages": messages,
             "temperature": 0.7
         }
@@ -93,7 +95,7 @@ class ChatBot:
                 return ai_reply
             else:
                 print(f"❌ Error OpenAI API: {response.status_code} - {response.text}")
-                return "Oops, error with AI response!"
+                return f"Oops, error with AI response! ({response.status_code})"
         except Exception as e:
             print(f"❌ Error OpenAI: {e}")
             return "Oops, error with AI response!"
@@ -103,8 +105,8 @@ class ChatBot:
         last_messages = {}
 
         while True:
-            sender_bot = random.choice(self.all_bots)
-            receiver_bot = random.choice([b for b in self.all_bots if b != sender_bot])
+            # Pilih dua bot secara acak yang berbeda
+            sender_bot, receiver_bot = random.sample(self.all_bots, 2)
 
             user_message = last_messages.get(sender_bot, "Hey, what's up?")
             ai_response = self.get_ai_response(user_message)
