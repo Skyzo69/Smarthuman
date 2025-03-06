@@ -88,7 +88,7 @@ class ChatBot(discord.Client):
         # Kirim permintaan ke OpenAI
         try:
             response = openai.ChatCompletion.create(
-                model="gpt-4-turbo",
+                model="gpt-4-mini",
                 messages=messages,
                 temperature=0.7
             )
