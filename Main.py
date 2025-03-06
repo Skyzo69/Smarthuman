@@ -71,8 +71,9 @@ class ChatBot:
             return self.last_message_id
         return None
 
-    def get_ai_response(self, user_message):
+    def get_ai_response():
     """Dapatkan balasan dari OpenAI dengan variasi lebih baik"""
+    pass  # Ini buat placeholder sementara biar nggak error
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {self.api_key}",
