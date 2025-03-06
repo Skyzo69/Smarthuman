@@ -1,5 +1,4 @@
 import requests
-import openai
 import asyncio
 import random
 
@@ -61,30 +60,40 @@ class ChatBot:
         if reply_to:
             data["message_reference"] = {"message_id": reply_to}
 
-        response = self.send_request("POST", f"channels/{TARGET_CHANNEL_ID}/messages", data)
+        response = self.send_request("POST", f"channels/{TARGET_CHANNEL_ID}/messages", json_data=data)
         if response:
             return response.get("id")
         return None
 
     def get_ai_response(self, user_message):
         """Dapatkan balasan dari OpenAI"""
-        openai.api_key = self.api_key
-
+        url = "https://api.openai.com/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        
         messages = [{"role": "system", "content": "You are a fun, informal chatbot in an online chatroom. Don't say you're an AI."}]
         for chat in self.chat_history[-5:]:
             messages.append({"role": chat["role"], "content": chat["content"]})
 
         messages.append({"role": "user", "content": user_message})
 
+        data = {
+            "model": "gpt-4o-mini",
+            "messages": messages,
+            "temperature": 0.7
+        }
+
         try:
-            response = openai.ChatCompletion.create(
-                model="gpt-4-mini",
-                messages=messages,
-                temperature=0.7
-            )
-            ai_reply = response["choices"][0]["message"]["content"]
-            self.chat_history.append({"role": "assistant", "content": ai_reply})
-            return ai_reply
+            response = requests.post(url, headers=headers, json=data)
+            if response.status_code == 200:
+                ai_reply = response.json()["choices"][0]["message"]["content"]
+                self.chat_history.append({"role": "assistant", "content": ai_reply})
+                return ai_reply
+            else:
+                print(f"❌ Error OpenAI API: {response.status_code} - {response.text}")
+                return "Oops, error with AI response!"
         except Exception as e:
             print(f"❌ Error OpenAI: {e}")
             return "Oops, error with AI response!"
@@ -115,7 +124,10 @@ class ChatBot:
 # Jalankan semua bot
 async def start_bots():
     bots = [ChatBot(token, user_tokens) for token in user_tokens]
-    await asyncio.gather(*(bot.start_conversation() for bot in bots))
+    
+    # Pakai `asyncio.create_task()` biar nggak nunggu satu per satu
+    tasks = [asyncio.create_task(bot.start_conversation()) for bot in bots]
+    await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
     asyncio.run(start_bots())
