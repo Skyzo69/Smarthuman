@@ -20,30 +20,31 @@ interval_max = float(input("Set Interval Waktu Maksimal Antar Pesan (detik): "))
 # Cek apakah token Discord valid
 def check_discord_token():
     url = "https://discord.com/api/v10/users/@me"
-    headers = {"Authorization": f"Bot {DISCORD_TOKEN}"}
+    headers = {"Authorization": DISCORD_TOKEN}  # Pakai token user, bukan bot
     
     response = requests.get(url, headers=headers)
     
     if response.status_code == 200:
-        print("✅ Bot Discord terautentikasi dengan sukses.")
+        user_data = response.json()
+        print(f"✅ Token valid. Login sebagai: {user_data.get('username')}#{user_data.get('discriminator')}")
     else:
         print(f"❌ Error: Token Discord tidak valid! ({response.status_code})")
         print(response.text)
         exit()
 
-# Cek apakah bot punya akses ke channel
+# Cek apakah user punya akses ke channel
 def check_channel_access():
     url = f"https://discord.com/api/v10/channels/{channel_id}"
-    headers = {"Authorization": f"Bot {DISCORD_TOKEN}"}
+    headers = {"Authorization": DISCORD_TOKEN}  # Pakai token user
 
     response = requests.get(url, headers=headers)
     
     if response.status_code == 200:
         channel_data = response.json()
         if not channel_data.get("id"):
-            print("❌ Error: Channel tidak ditemukan atau bot tidak punya akses.")
+            print("❌ Error: Channel tidak ditemukan atau tidak bisa diakses.")
             exit()
-        print(f"✅ Bot memiliki akses ke channel: {channel_data.get('name', 'Unknown')}")
+        print(f"✅ Akses ke channel: {channel_data.get('name', 'Unknown')}")
     else:
         print(f"❌ Error: Gagal mengakses channel! ({response.status_code})")
         print(response.text)
@@ -83,7 +84,7 @@ def get_ai_response(prompt):
 def send_to_discord(message):
     discord_url = f"https://discord.com/api/v10/channels/{channel_id}/messages"
     headers = {
-        "Authorization": f"Bot {DISCORD_TOKEN}",
+        "Authorization": DISCORD_TOKEN,  # Pakai token user
         "Content-Type": "application/json"
     }
     data = {"content": message}
