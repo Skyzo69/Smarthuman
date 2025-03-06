@@ -47,6 +47,7 @@ class ChatBot:
         self.token = token
         self.api_key = api_key
         self.last_message_id = None  # Simpan ID pesan terakhir
+        self.chat_history = []  # Simpan history pesan (max 5)
 
     def send_request(self, method, endpoint, json_data=None):
         """Helper buat kirim request ke Discord API"""
@@ -68,52 +69,56 @@ class ChatBot:
         response = self.send_request("POST", f"channels/{TARGET_CHANNEL_ID}/messages", json_data=data)
         if response:
             self.last_message_id = response.get("id")
+            self.chat_history.append({"role": "assistant", "content": content})  # Simpan pesan bot
+            if len(self.chat_history) > 5:
+                self.chat_history.pop(0)  # Hapus pesan lama biar history tetap max 5
             return self.last_message_id
         return None
 
-    def get_ai_response():
-    url = "https://api.openai.com/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {self.api_key}",
-        "Content-Type": "application/json"
-    }
+    def get_ai_response(self, user_message):
+        """Dapatkan balasan AI dari OpenAI API"""
+        url = "https://api.openai.com/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
 
-    # Update prompt supaya AI nggak terlalu banyak tanya & lebih santai
-    system_prompt = """Oke, sekarang jadi lah AI yang friendly menggunakan bahasa Inggris informal/sehari-hari.
-    Jangan ngaku kalau kamu AI ketika ditanya. Tambahkan emote seperlunya!
-    Jangan banyak tanya, seperlunya aja! Jadi lah seperti manusia, ngobrol biasa."""
+        # Update prompt supaya AI nggak terlalu banyak tanya & lebih santai
+        system_prompt = """Oke, sekarang jadi lah AI yang friendly menggunakan bahasa Inggris informal/sehari-hari.
+        Jangan ngaku kalau kamu AI ketika ditanya. Tambahkan emote seperlunya!
+        Jangan banyak tanya, seperlunya aja! Jadi lah seperti manusia, ngobrol biasa."""
 
-    messages = [{"role": "system", "content": system_prompt}]
-    
-    # Ambil history percakapan (max 5 chat terakhir)
-    for chat in self.chat_history[-5:]:
-        messages.append({"role": chat["role"], "content": chat["content"]})
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        # Ambil history percakapan (max 5 chat terakhir)
+        for chat in self.chat_history[-5:]:
+            messages.append({"role": chat["role"], "content": chat["content"]})
 
-    messages.append({"role": "user", "content": user_message})
+        messages.append({"role": "user", "content": user_message})
 
-    data = {
-        "model": "gpt-4o",
-        "messages": messages,
-        "temperature": 2.0 # Bikin lebih variatif
-    }
+        data = {
+            "model": "gpt-4o",
+            "messages": messages,
+            "temperature": 2.0  # Bikin lebih variatif
+        }
 
-    try:
-        response = requests.post(url, headers=headers, json=data)
-        if response.status_code == 200:
-            ai_reply = response.json()["choices"][0]["message"]["content"]
-            
-            # Filter response biar ga looping pertanyaan
-            if ai_reply.lower().startswith(("what's up", "how are you", "what's new")):
-                ai_reply = "Ah, you know, just the usual! Hanging out and vibing. 😎"
+        try:
+            response = requests.post(url, headers=headers, json=data)
+            if response.status_code == 200:
+                ai_reply = response.json()["choices"][0]["message"]["content"]
+                
+                # Filter response biar ga looping pertanyaan
+                if ai_reply.lower().startswith(("what's up", "how are you", "what's new")):
+                    ai_reply = "Ah, you know, just the usual! Hanging out and vibing. 😎"
 
-            self.chat_history.append({"role": "assistant", "content": ai_reply})
-            return ai_reply
-        else:
-            print(f"❌ Error OpenAI API: {response.status_code} - {response.text}")
-            return f"Oops, error with AI response! ({response.status_code})"
-    except Exception as e:
-        print(f"❌ Error OpenAI: {e}")
-        return "Oops, error with AI response!"
+                self.chat_history.append({"role": "assistant", "content": ai_reply})
+                return ai_reply
+            else:
+                print(f"❌ Error OpenAI API: {response.status_code} - {response.text}")
+                return f"Oops, error with AI response! ({response.status_code})"
+        except Exception as e:
+            print(f"❌ Error OpenAI: {e}")
+            return "Oops, error with AI response!"
 
 # Inisialisasi bot
 bot1 = ChatBot(TOKEN_1, api_keys[TOKEN_1])
@@ -125,6 +130,7 @@ async def start_chat():
     # STEP 1: Token 1 kirim pesan pertama (tanpa AI)
     first_message = random.choice(["Hey, what's up? ", "Yo! How's your day? ", "Hello there! What's new? "])
     bot1.last_message_id = bot1.send_message(first_message)
+    bot1.chat_history.append({"role": "user", "content": first_message})  # Simpan pesan pertama
     print(f"💬 Bot 1: {first_message}")
 
     await asyncio.sleep(random.uniform(MIN_INTERVAL, MAX_INTERVAL))
@@ -149,6 +155,6 @@ async def start_chat():
 if __name__ == "__main__":
     try:
         asyncio.run(start_chat())
-    except RuntimeError:  
+    except RuntimeError:
         loop = asyncio.get_event_loop()
         loop.run_until_complete(start_chat())
