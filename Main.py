@@ -34,13 +34,17 @@ except FileNotFoundError:
     print("❌ File token.txt tidak ditemukan!")
     exit(1)
 
+if not user_tokens:
+    print("❌ Tidak ada token yang dimuat! Pastikan file token.txt benar.")
+    exit(1)
+
 # Class ChatBot pakai requests
 class ChatBot:
     def __init__(self, token, all_bots):
         self.token = token
         self.api_key = api_keys[token]
         self.all_bots = all_bots
-        self.last_message_ids = {}  # Simpan ID pesan terakhir
+        self.last_message_ids = {}  # Simpan ID pesan terakhir per channel
         self.chat_history = []  # Simpan history chat
 
     def send_request(self, method, endpoint, json_data=None):
@@ -73,9 +77,7 @@ class ChatBot:
             "Content-Type": "application/json"
         }
         
-        messages = [{"role": "system", "content": "Oke sekarang jadi lah ai yang friendly menggunakan bahasa Inggris informal/sehari hari dan jangan ngaku kalau kamu ai ketika di tanya jangan lupa tambahkan emote seperlunya! Jangan banyak tanya/jangan tanya terus seperlunya aja! Jadi lah seperti manusia
-
-"}]
+        messages = [{"role": "system", "content": "Oke sekarang jadi lah ai yang friendly menggunakan bahasa Inggris informal/sehari hari dan jangan ngaku kalau kamu ai ketika di tanya. Tambahkan emote seperlunya! Jangan banyak tanya, seperlunya aja! Jadi lah seperti manusia."}]
         for chat in self.chat_history[-5:]:
             messages.append({"role": chat["role"], "content": chat["content"]})
 
@@ -105,7 +107,10 @@ class ChatBot:
         last_messages = {}
 
         while True:
-            # Pilih dua bot secara acak yang berbeda
+            if len(self.all_bots) < 2:
+                print("❌ Tidak cukup bot untuk percakapan! Minimal 2 bot diperlukan.")
+                return
+
             sender_bot, receiver_bot = random.sample(self.all_bots, 2)
 
             user_message = last_messages.get(sender_bot, "Hey, what's up?")
@@ -125,6 +130,10 @@ class ChatBot:
 
 # Jalankan semua bot
 async def start_bots():
+    if len(user_tokens) < 2:
+        print("❌ Tidak cukup bot! Minimal 2 bot diperlukan untuk percakapan.")
+        return
+
     bots = [ChatBot(token, user_tokens) for token in user_tokens]
     
     # Pakai `asyncio.create_task()` biar nggak nunggu satu per satu
@@ -132,4 +141,8 @@ async def start_bots():
     await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
-    asyncio.run(start_bots())
+    try:
+        asyncio.run(start_bots())
+    except RuntimeError:  
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(start_bots())
